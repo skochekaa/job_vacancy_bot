@@ -25,7 +25,7 @@ KEYWORDS = [
 EXCLUDE_PATTERNS = [
     r'\bsenior\b',
     r'\bmiddle\b',
-    r'\bfull[\s-]?stack\b',
+    r'\bfull[\s-]?stack\b'
     r'не\s+удал[её]н\w*',
     r'без\s+удал[её]н\w*'
 ]
