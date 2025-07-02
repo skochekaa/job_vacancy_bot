@@ -1,101 +1,93 @@
-import os
-import sqlite3
-import re
 import asyncio
-from dotenv import load_dotenv
+import os
 from telethon import TelegramClient, events
+from telethon.errors import ForbiddenError
 import logging
+from dotenv import load_dotenv
+import re
+from typing import Iterable
 
-# 📥 Загрузка переменных окружения
 load_dotenv()
-
-api_id = int(os.getenv("API_ID"))
-api_hash = os.getenv("API_HASH")
-source_chats = os.getenv("SOURCE_CHATS").split(",")
-target_chats = os.getenv("TARGET_CHATS").split(",")
-
-# ✅ Плюс-слова или фразы (регулярки)
-KEYWORDS = [
-    r'\bpython\b',
-    r'\bjunior\b',
-    r'удал[её]н\w*',
-]
-
-# ❌ Минус-слова или фразы (регулярки)
-EXCLUDE_PATTERNS = [
-    r'\bsenior\b',
-    r'\bmiddle\b',
-    r'\bfull[\s-]?stack\b',
-    r'не\s+удал[её]н\w*',
-    r'без\s+удал[её]н\w*'
-]
-
-# 📦 Подключение к SQLite
-db_path = os.path.join(os.path.dirname(__file__), 'parser_db.sqlite')
-conn = sqlite3.connect(db_path)
-cursor = conn.cursor()
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS parsed_messages (
-        message_id INTEGER,
-        chat_id TEXT,
-        PRIMARY KEY (message_id)
-    )
-''')
-conn.commit()
-
-# 📝 Логирование
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+# Логирование
 logging.basicConfig(
-    filename='job_bot.log',
+    filename="job_bot.log",
     level=logging.INFO,
-    format='%(asctime)s | %(levelname)s | %(message)s',
+    format="%(asctime)s | %(levelname)s | %(message)s",
 )
 
-# 🔌 Telegram клиент
-client = TelegramClient('session', api_id, api_hash)
+# Список источников: username, numeric ID
+# TODO 1: Не пересылает из групп
+TARGET_CHATS = ["me", "https://t.me/+2FhJUyyxdjA3Mjky"]
 
-@client.on(events.NewMessage(chats=source_chats))
-async def handler(event):
-    message = event.message
-    chat_id = str(event.chat_id)
-    message_id = message.id
-    text = message.message or ''
+# Читаем файл с ключевыми словами построчно
+with open("../keywords.txt") as file:
+    keywords = [line.strip() for line in file]
 
-    # Уже обработано?
-    cursor.execute(
-        'SELECT 1 FROM parsed_messages WHERE message_id = ? AND chat_id = ?',
-        (message_id, chat_id)
-    )
-    if cursor.fetchone():
-        return
+# Читаем файл с источниками
+with open("../source_chats.txt") as source:
+    source_chats = [line.strip() for line in source]
 
-    text_lower = text.lower()
+with open("../target_chats.txt") as target_file:
+    target_chats = [line.strip() for line in target_file]
 
-    # ❌ Минус-фразы
-    for pattern in EXCLUDE_PATTERNS:
-        if re.search(pattern, text_lower, re.IGNORECASE):
-            logging.info(f"[СКИП] ❌ Минус-фраза в {message_id}")
-            return
+def search_key_in_text(text: str, key_list: Iterable[str]) -> bool:
+    """
+    Проверяет, содержит ли `text` хотя бы одно слово из `keywords`.
+    Если да — печатает весь текст и возвращает True.
+    Если нет — ничего не выводит и возвращает False.
 
-    # ✅ Плюс-фразы
-    if any(re.search(pattern, text_lower, re.IGNORECASE) for pattern in KEYWORDS):
-        for target in target_chats:
-            try:
-                await client.send_message(target, f"💼 Вакансия:\n\n{text}")
-                logging.info(f"[ОТПРАВЛЕНО] ✅ {message_id} -> {target}")
-            except Exception as e:
-                logging.error(f"[ОШИБКА] {message_id} -> {target}: {e}")
-        cursor.execute(
-            'INSERT INTO parsed_messages (message_id, chat_id) VALUES (?, ?)',
-            (message_id, chat_id)
-        )
-        conn.commit()
-    else:
-        logging.info(f"[СКИП] 🚫 Нет ключей в {message_id}")
+    text – произвольная строка (может быть многострочной).
+    key_list – список/кортеж/любой итерируемый объект с ключевыми словами.
 
-async def main():
-    client.start()
-    logging.info("🚀 Бот запущен")
-    await client.run_until_disconnected()
+    Поиск нечувствителен к регистру и учитывает только полные слова.
+    """
+    # Готовим регулярное выражение вида r"\b(?:слово1|слово2|...)\b"
+    # экранируем спецсимволы
+    escaped = map(re.escape, key_list)
+    # объединяем через «или»
+    pattern = r"\b(?:{})\b".format("|".join(escaped))
+    if re.search(pattern, text, flags=re.IGNORECASE):
+        print(text)
+        return True
+    return False
 
+
+# Бизнес-логика
+async def main() -> None:
+    # создаём клиент и логинимся (при первом запуске спросит код + пароль 2FA)
+    async with TelegramClient("session", API_ID, API_HASH) as client:
+        if client.is_connected():
+            print("Connected")
+            logging.info("Подключение к клиенту выполнено успешно")
+
+        @client.on(events.NewMessage(chats=source_chats))
+        async def forward_to_me(event: events.NewMessage.Event) -> None:
+            """
+            Обработчик: любое новое сообщение → «Saved Messages» владельца бота.
+            Сервисные сообщения (join/leave и т. п.) Telethon сюда не шлёт по умолчанию.
+            """
+            message_id = event.message.id
+            chat_name = event.chat.username
+            message = event.message.message
+            if search_key_in_text(message, keywords):
+                print(message)
+                for target in target_chats:
+                    await event.message.forward_to(target)
+                    # TODO 2: Разобраться с дублированием логов
+                    logging.info(f"Получено сообщение {message_id} из {chat_name}")
+
+        print("🚀 Forwarder запущен.")
+        logging.info("Forwarder запущен")
+        await client.run_until_disconnected()
+
+# Запуск
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except ForbiddenError:
+        logging.info("Нарушение настроек приватности")
+    except (KeyboardInterrupt, SystemExit):
+        print("👋 До встречи!")
+        logging.info("Клиент отключен")

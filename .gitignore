@@ -35,4 +35,5 @@ allure-report/
 *.log
 *.tmp
 
+# БД
 *.sqlite
