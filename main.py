@@ -21,15 +21,22 @@ logging.basicConfig(
 # TODO 1: Не пересылает из групп
 TARGET_CHATS = ["me", "https://t.me/+2FhJUyyxdjA3Mjky"]
 
+# Задаем путь к файлам для запуска на любой ОС
+current_dir = os.path.dirname(os.path.abspath(__file__))
+print(current_dir)
+keyword_file_path = os.path.join(current_dir, "keywords.txt")
+source_file_path = os.path.join(current_dir, "source_chats.txt")
+target_file_path = os.path.join(current_dir, "target_chats.txt")
+
 # Читаем файл с ключевыми словами построчно
-with open(os.path.join("../keywords.txt")) as file:
+with open(keyword_file_path) as file:
     keywords = [line.strip() for line in file]
 
 # Читаем файл с источниками
-with open(os.path.join("../source_chats.txt")) as source:
+with open(source_file_path) as source:
     source_chats = [line.strip() for line in source]
 
-with open(os.path.join("../target_chats.txt")) as target_file:
+with open(target_file_path) as target_file:
     target_chats = [line.strip() for line in target_file]
 
 def search_key_in_text(text: str, key_list: Iterable[str]) -> bool:
