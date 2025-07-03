@@ -22,14 +22,14 @@ logging.basicConfig(
 TARGET_CHATS = ["me", "https://t.me/+2FhJUyyxdjA3Mjky"]
 
 # Читаем файл с ключевыми словами построчно
-with open("../keywords.txt") as file:
+with open(os.path.join("../keywords.txt")) as file:
     keywords = [line.strip() for line in file]
 
 # Читаем файл с источниками
-with open("../source_chats.txt") as source:
+with open(os.path.join("../source_chats.txt")) as source:
     source_chats = [line.strip() for line in source]
 
-with open("../target_chats.txt") as target_file:
+with open(os.path.join("../target_chats.txt")) as target_file:
     target_chats = [line.strip() for line in target_file]
 
 def search_key_in_text(text: str, key_list: Iterable[str]) -> bool:
