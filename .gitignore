@@ -37,3 +37,6 @@ allure-report/
 
 # БД
 *.sqlite
+
+# Файлы сессии
+*.session
