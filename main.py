@@ -66,7 +66,7 @@ def search_key_in_text(text: str, key_list: Iterable[str]) -> bool:
 # Бизнес-логика
 async def main() -> None:
     # создаём клиент и логинимся (при первом запуске спросит код + пароль 2FA)
-    async with TelegramClient(StringSession(os.getenv("STRING_SESSION")), API_ID, API_HASH) as client:
+    async with TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH) as client:
         if client.is_connected():
             print("Connected")
             logging.info("Подключение к клиенту выполнено успешно")
