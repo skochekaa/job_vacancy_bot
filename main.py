@@ -2,12 +2,14 @@ import asyncio
 import os
 from telethon import TelegramClient, events
 from telethon.errors import ForbiddenError
+from telethon.sessions import StringSession
 import logging
 from dotenv import load_dotenv
 import re
 from typing import Iterable
 
 load_dotenv()
+STRING_SESSION = os.getenv("STRING_SESSION")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 # Логирование
@@ -64,7 +66,7 @@ def search_key_in_text(text: str, key_list: Iterable[str]) -> bool:
 # Бизнес-логика
 async def main() -> None:
     # создаём клиент и логинимся (при первом запуске спросит код + пароль 2FA)
-    async with TelegramClient("session", API_ID, API_HASH) as client:
+    async with TelegramClient(StringSession(os.getenv("STRING_SESSION")), API_ID, API_HASH) as client:
         if client.is_connected():
             print("Connected")
             logging.info("Подключение к клиенту выполнено успешно")
