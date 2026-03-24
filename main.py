@@ -42,18 +42,19 @@ async def main() -> None:
         @bot.on(events.NewMessage(pattern=r"/start"))
         async def start(event: events.NewMessage.Event):
             sender_id = event.sender_id
+            print(sender_id)
             await event.respond("Привет!🖐🏻\n\nЭтот бот будет пересылать тебе сообщения о новых вакансиях по маркетингу")
 
         @client.on(events.NewMessage())
         async def forward_to_bot(event):
-            if any(w in event.raw_text for w in keywords):
+            if any(w in event.raw_text.lower() for w in keywords):
                 message_id = event.message.id
                 chat_name = event.chat.username
                 message = event.message
                 logging.info(f"Получено сообщение {message_id} из {chat_name}")
                 await event.message.forward_to("me")
                 logging.info(f"Сообщение переслано в избранное")
-                await bot.send_message(entity=8105768964, message=message)
+                await bot.send_message(entity=8105768964, message="Получено новое сообщение")
 
 
         print("🚀 Forwarder запущен.")
