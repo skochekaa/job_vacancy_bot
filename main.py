@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 from telethon import TelegramClient, events
 from telethon.errors import ForbiddenError
 import logging
@@ -33,6 +34,18 @@ with open(spot_keys_file_path, encoding="utf-8") as stop_file:
     stop_keys = [line.strip().lower() for line in stop_file if line.strip()]
 
 
+def compile_keyword_patterns(words: list[str]) -> list[re.Pattern]:
+    return [re.compile(rf"(?<!\w){re.escape(word)}(?!\w)") for word in words]
+
+
+def has_any_keyword(text: str, patterns: list[re.Pattern]) -> bool:
+    return any(pattern.search(text) for pattern in patterns)
+
+
+keyword_patterns = compile_keyword_patterns(keywords)
+stop_key_patterns = compile_keyword_patterns(stop_keys)
+
+
 # Бизнес-логика
 async def main() -> None:
     # создаём клиент и логинимся (при первом запуске спросит номер телефона в международном формате + пароль 2FA)
@@ -53,7 +66,7 @@ async def main() -> None:
         @client.on(events.NewMessage())
         async def forward_to_bot(event: events.NewMessage.Event):
             text = event.raw_text.lower()
-            if any(w in text for w in keywords) and not any(k in text for k in stop_keys):
+            if has_any_keyword(text, keyword_patterns) and not has_any_keyword(text, stop_key_patterns):
                 message_id = event.message.id
                 chat_nickname = event.chat.username
                 logging.info(f"Получено сообщение {message_id} из {chat_nickname}")
@@ -63,7 +76,7 @@ async def main() -> None:
                 logging.info(f"Сообщение переслано в избранное")
                 await bot.send_message(
                     entity=CLIENT_ID,
-                    message=f"Получено сообщение из: {chat_name}({chat_nickname})\n\nТекст:\n\n{message}"
+                    message=f"Получено сообщение из: {chat_name}(@{chat_nickname})\n\nТекст:\n\n{message}"
                 )
                 logging.info(f"Сообщение переслано в бот")
 
