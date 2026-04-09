@@ -70,13 +70,16 @@ async def main() -> None:
                 message_id = event.message.id
                 chat_nickname = event.chat.username
                 logging.info(f"Получено сообщение {message_id} из {chat_nickname}")
-                message = event.raw_text
+                message = event.message.message or ""
+                message_entities = event.message.entities or None
                 chat_name = event.sender.title
                 await event.message.forward_to("me")
                 logging.info(f"Сообщение переслано в избранное")
                 await bot.send_message(
                     entity=CLIENT_ID,
-                    message=f"Получено сообщение из: {chat_name}(@{chat_nickname})\n\nТекст:\n\n{message}"
+                    message=f"{message}\n\nПолучено из: {chat_name}(@{chat_nickname})",
+                    formatting_entities=message_entities,
+                    link_preview=True
                 )
                 logging.info(f"Сообщение переслано в бот")
 
