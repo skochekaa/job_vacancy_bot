@@ -63,8 +63,11 @@ async def main() -> None:
             logging.info(f"Пользователь {sender_id} активировал уведомления")
             await event.respond("Привет!🖐🏻\n\nЭтот бот будет пересылать тебе сообщения о новых вакансиях по маркетингу")
 
-        @client.on(events.NewMessage(incoming=True))
+        @client.on(events.NewMessage())
         async def forward_to_bot(event: events.NewMessage.Event):
+            if not (event.is_group or event.is_channel):
+                return
+
             text = (event.raw_text or "").lower()
             if has_any_keyword(text, keyword_patterns) and not has_any_keyword(text, stop_key_patterns):
                 message_id = event.message.id
@@ -90,8 +93,13 @@ async def main() -> None:
 
                 await bot.send_message(
                     entity=CLIENT_ID,
+                    message=f"Получено из: {chat_title} ({source_ref})"
+                )
+
+                await bot.send_message(
+                    entity=CLIENT_ID,
                     message=source_text,
-                    formatting_entities=f"{source_entities}\n\nПолучено из: {chat_title} ({source_ref})",
+                    formatting_entities=source_entities,
                     link_preview=True
                 )
 
