@@ -65,23 +65,45 @@ async def main() -> None:
 
         @client.on(events.NewMessage())
         async def forward_to_bot(event: events.NewMessage.Event):
-            text = event.raw_text.lower()
+            if not (event.is_group or event.is_channel):
+                return
+
+            text = (event.raw_text or "").lower()
             if has_any_keyword(text, keyword_patterns) and not has_any_keyword(text, stop_key_patterns):
                 message_id = event.message.id
-                chat_nickname = event.chat.username
-                logging.info(f"Получено сообщение {message_id} из {chat_nickname}")
-                message = event.message.message or ""
-                message_entities = event.message.entities or None
-                chat_name = event.sender.title
-                await event.message.forward_to("me")
-                logging.info(f"Сообщение переслано в избранное")
+                chat = await event.get_chat()
+                chat_title = (
+                    getattr(chat, "title", None)
+                    or getattr(chat, "first_name", None)
+                    or getattr(chat, "username", None)
+                    or str(event.chat_id)
+                )
+                chat_username = getattr(chat, "username", None)
+                source_ref = f"@{chat_username}" if chat_username else f"id:{event.chat_id}"
+                logging.info(f"Получено сообщение {message_id} из {source_ref}")
+
+                source_text = event.message.message or ""
+                source_entities = event.message.entities or None
+
+                try:
+                    await event.message.forward_to("me")
+                    logging.info("Сообщение переслано в избранное")
+                except Exception as error:
+                    logging.warning(f"Не удалось переслать сообщение в избранное: {error}")
+
                 await bot.send_message(
                     entity=CLIENT_ID,
-                    message=f"{message}\n\nПолучено из: {chat_name}(@{chat_nickname})",
-                    formatting_entities=message_entities,
+                    message=f"Получено из: {chat_title} ({source_ref})"
+                )
+
+                await bot.send_message(
+                    entity=CLIENT_ID,
+                    message=source_text,
+                    formatting_entities=source_entities,
                     link_preview=True
                 )
-                logging.info(f"Сообщение переслано в бот")
+
+                logging.info("Сообщение переслано в бот")
 
 
         print("🚀 Forwarder запущен.")
