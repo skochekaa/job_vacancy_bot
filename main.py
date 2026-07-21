@@ -63,7 +63,7 @@ async def main() -> None:
             logging.info(f"Пользователь {sender_id} активировал уведомления")
             await event.respond("Привет!🖐🏻\n\nЭтот бот будет пересылать тебе сообщения о новых вакансиях по маркетингу")
 
-        @client.on(events.NewMessage())
+        @client.on(events.NewMessage(incoming=True))
         async def forward_to_bot(event: events.NewMessage.Event):
             if not (event.is_group or event.is_channel):
                 return
@@ -93,12 +93,7 @@ async def main() -> None:
 
                 await bot.send_message(
                     entity=CLIENT_ID,
-                    message=f"Получено из: {chat_title} ({source_ref})"
-                )
-
-                await bot.send_message(
-                    entity=CLIENT_ID,
-                    message=source_text,
+                    message=f"{source_text}\n\nПолучено из: {chat_title} ({source_ref}",
                     formatting_entities=source_entities,
                     link_preview=True
                 )
